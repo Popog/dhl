@@ -213,15 +213,15 @@ mod test {
         create_dir_all(&out_dir).unwrap();
         create_dir_all(&deps_dir).unwrap();
 
-        File::create(deps_dir.join("libdummy_dash-d15ea5e.rlib")).unwrap();
-        File::create(deps_dir.join("libdummy_underscore-deadbeef.rlib")).unwrap();
-        File::create(deps_dir.join("libdummy-c000l0ff.rlib")).unwrap();
+        File::create(deps_dir.join("libdhltest_dash-d15ea5e.rlib")).unwrap();
+        File::create(deps_dir.join("libdhltest_underscore-deadbeef.rlib")).unwrap();
+        File::create(deps_dir.join("libdhltest-c000l0ff.rlib")).unwrap();
 
         let r = Recipients::with_env(&out_dir, base_dir.path()).unwrap();
 
-        r.get("dummy").unwrap();
-        r.get("dummy-dash").unwrap();
-        r.get("dummy_underscore").unwrap();
+        r.get("dhltest").unwrap();
+        r.get("dhltest-dash").unwrap();
+        r.get("dhltest_underscore").unwrap();
 
         base_dir.close().unwrap();
     }

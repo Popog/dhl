@@ -216,28 +216,28 @@ mod test {
         create_dir_all(&deps_dir).unwrap();
         create_dir_all(&private_dir).unwrap();
 
-        let dummy_target = deps_dir.join("libdummy-c000l0ff.rlib");
-        let dummy_dash_target = deps_dir.join("libdummy_dash-d15ea5e.rlib");
-        let dummy_underscore_target = deps_dir.join("libdummy_underscore-deadbeef.rlib");
+        let dhltest_target = deps_dir.join("libdhltest-c000l0ff.rlib");
+        let dhltest_dash_target = deps_dir.join("libdhltest_dash-d15ea5e.rlib");
+        let dhltest_underscore_target = deps_dir.join("libdhltest_underscore-deadbeef.rlib");
 
         {
-            File::create(&dummy_target).unwrap();
-            File::create(&dummy_dash_target).unwrap();
-            File::create(&dummy_underscore_target).unwrap();
+            File::create(&dhltest_target).unwrap();
+            File::create(&dhltest_dash_target).unwrap();
+            File::create(&dhltest_underscore_target).unwrap();
         }
 
-        let dummy_source = private_dir.join("dummy");
-        let dummy_dash_source = private_dir.join("libdummy_dash.rlib");
-        let dummy_underscore_source = private_dir.join("libdummy_underscore.v12.rlib");
+        let dhltest_source = private_dir.join("dhltest");
+        let dhltest_dash_source = private_dir.join("libdhltest_dash.rlib");
+        let dhltest_underscore_source = private_dir.join("libdhltest_underscore.v12.rlib");
 
         {
-            let mut file = File::create(&dummy_source).unwrap();
+            let mut file = File::create(&dhltest_source).unwrap();
             write!(file, "test1").unwrap();
 
-            let mut file = File::create(&dummy_dash_source).unwrap();
+            let mut file = File::create(&dhltest_dash_source).unwrap();
             write!(file, "test2").unwrap();
 
-            let mut file = File::create(&dummy_underscore_source).unwrap();
+            let mut file = File::create(&dhltest_underscore_source).unwrap();
             write!(file, "test3").unwrap();
         }
 
@@ -245,30 +245,30 @@ mod test {
 
         let mut packages = HashMap::new();
         packages.insert(
-            "dummy".into(),
+            "dhltest".into(),
             Package {
                 data: PackageData::File(FileData {
-                    source: dummy_source.clone(),
+                    source: dhltest_source.clone(),
                     link: None,
                 }),
                 version: None,
             },
         );
         packages.insert(
-            "dummy-dash".into(),
+            "dhltest-dash".into(),
             Package {
                 data: PackageData::File(FileData {
-                    source: dummy_dash_source.clone(),
+                    source: dhltest_dash_source.clone(),
                     link: None,
                 }),
                 version: None,
             },
         );
         packages.insert(
-            "dummy_underscore".into(),
+            "dhltest_underscore".into(),
             Package {
                 data: PackageData::File(FileData {
-                    source: dummy_underscore_source.clone(),
+                    source: dhltest_underscore_source.clone(),
                     link: None,
                 }),
                 version: None,
@@ -280,17 +280,17 @@ mod test {
 
         {
             let mut s = String::new();
-            let mut file = File::open(&dummy_target).unwrap();
+            let mut file = File::open(&dhltest_target).unwrap();
             file.read_to_string(&mut s).unwrap();
             assert_eq!(s, "test1");
 
             s.clear();
-            let mut file = File::open(&dummy_dash_target).unwrap();
+            let mut file = File::open(&dhltest_dash_target).unwrap();
             file.read_to_string(&mut s).unwrap();
             assert_eq!(s, "test2");
 
             s.clear();
-            let mut file = File::open(&dummy_underscore_target).unwrap();
+            let mut file = File::open(&dhltest_underscore_target).unwrap();
             file.read_to_string(&mut s).unwrap();
             assert_eq!(s, "test3");
         }

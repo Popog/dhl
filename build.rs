@@ -17,9 +17,9 @@ fn main() {
 #[test]
 fn verify_deps() {{
     let r = Recipients::with_env("{out_dir}", "{manifest_dir}").unwrap();
-    r.get("dummy").unwrap();
-    r.get("dummy-dash").unwrap();
-    r.get("dummy_underscore").unwrap();
+    r.get("dhltest").unwrap();
+    r.get("dhltest-dash").unwrap();
+    r.get("dhltest_underscore").unwrap();
 }}"#,
         out_dir = out_dir,
         manifest_dir = manifest_dir,
