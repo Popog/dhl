@@ -24,6 +24,6 @@ serde = "^1.0"
 
 [dev-dependencies]
 tempdir = "^0.3"
-dhltest = { path = "dhltest", version = "1.0.0" }
-dhltest-dash = { path = "dhltest-dash", version = "1.0.0"  }
-dhltest_underscore = { path = "dhltest_underscore", version = "1.0.0"  }
+dhltest = { git = "https://github.com/Popog/dhl", version = "1.0.0" }
+dhltest-dash = { git = "https://github.com/Popog/dhl", version = "1.0.0"  }
+dhltest_underscore = { git = "https://github.com/Popog/dhl", version = "1.0.0"  }
