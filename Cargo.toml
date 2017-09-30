@@ -24,6 +24,6 @@ serde = "^1.0"
 
 [dev-dependencies]
 tempdir = "^0.3"
-dummy = { path = "dummy" }
-dummy-dash = { path = "dummy-dash" }
-dummy_underscore = { path = "dummy_underscore" }
+dummy = { path = "dummy", version = "1.0.0" }
+dummy-dash = { path = "dummy-dash", version = "1.0.0"  }
+dummy_underscore = { path = "dummy_underscore", version = "1.0.0"  }
