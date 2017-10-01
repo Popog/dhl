@@ -445,7 +445,7 @@ impl Manifest {
                         source: manifest_dir.join(Path::new(source.split_at("file://".len()).1)),
                         link: None,
                     })
-                } else if !source.contains("://") {
+                } else if source.contains("://") {
                     PackageData::Url(UrlData {
                         source: Url::parse(source).context((crate_name, package))?,
                     })

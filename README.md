@@ -43,7 +43,7 @@ priv = { path = "priv" }
 
 [build-dependencies]
 priv = { path = "priv" }
-dhl = "0.1.0"
+dhl = "^0.1"
 
 [package.metadata.dhl.packages]
 priv = "./libs/{{target}}/{{rustc_short_version}}/libpriv.lib"
@@ -57,7 +57,7 @@ As for our build script, it's pretty short:
 extern crate dhl;
 
 fn main() {
-    dhl::simply_deliver();
+    dhl::simply_deliver().unwrap();
 }
 ```
 
@@ -84,3 +84,21 @@ Sources can either be a path to a file (relative paths are based on `CARGO_MANIF
 * `https`
 
 The only supported option is `link`, with valid parameters being `soft` and `hard`. If the link option is present either a symbolic link or a hard link to the library file is created. Otherwise the library file is copied. For obvious reasons, `link` is only supported for files.
+
+As for the substitutions, the built-ins available are:
+
+* `{{rustc_short_version}}`
+* `{{target}}`
+* `{{profile}}`
+
+The last two are take from environment variables. These can be removed or changed by providing a `[package.metadata.dhl.substitutions]` section. These can either be a direct string assignment:
+
+```toml
+foo = "bar"
+```
+
+or using the value from an environment variable:
+
+```toml
+foo = { value = "BAR", env = true }
+```
