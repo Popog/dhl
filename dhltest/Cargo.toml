@@ -1,4 +1,6 @@
 [package]
 name = "dhltest"
 version = "1.0.0"
-authors = [""]
+authors = ["Popog"]
+description = "Dependency Hijacking Library Test Library"
+license = "MIT/Apache-2.0"
