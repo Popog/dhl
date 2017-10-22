@@ -13,8 +13,9 @@ extern crate serde_derive;
 extern crate serde;
 #[macro_use]
 extern crate quick_error;
-extern crate symlink;
 extern crate toml;
+extern crate tar;
+extern crate libflate;
 
 #[cfg(test)]
 extern crate tempdir;
@@ -28,7 +29,7 @@ mod manifest;
 #[cfg(feature = "handlebars")]
 mod template;
 
-pub use recipients::{Recipients,RecipientsError};
+pub use recipients::{Recipients, RecipientsError};
 pub use manifest::{Manifest, Packages, ManifestCreationError, ManifestInspectionError};
 pub use depot::{Depot, DepotError};
 

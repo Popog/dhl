@@ -7,6 +7,7 @@ use std::time::SystemTime;
 use std::ffi::{OsString, OsStr};
 use std::fs::Metadata;
 use std::path::{Path, PathBuf};
+use std::mem::replace;
 
 use var_os_or;
 
@@ -40,10 +41,10 @@ impl Address {
         }
     }
     fn is_newer(&self, other: &Self) -> bool {
-        if let (Ok(a), Ok(b)) = (self.last_modified.as_ref(), other.last_modified.as_ref()) {
-            a >= b
-        } else {
-            true
+        match (self.last_modified.as_ref(), other.last_modified.as_ref()) {
+            (Ok(a), Ok(b)) => a >= b,
+            (_, Err(_)) => true,
+            _ => false,
         }
     }
 
@@ -54,10 +55,24 @@ impl Address {
     }
 }
 
+struct Addresses {
+    most_recent: Address,
+    previous: Vec<OsString>,
+}
+
+impl Addresses {
+    fn new(most_recent: Address) -> Self {
+        Addresses {
+            most_recent,
+            previous: Vec::new(),
+        }
+    }
+}
+
 pub struct Recipients {
     deps_dir: PathBuf,
     relative_deps_dir: Option<PathBuf>,
-    addresses: HashMap<String, Address>,
+    addresses: HashMap<String, Addresses>,
 }
 
 impl Recipients {
@@ -130,24 +145,16 @@ impl Recipients {
             let info = Address::new(file_name, file.metadata());
             match addresses.entry(utf_file_name.clone()) {
                 Vacant(entry) => {
-                    entry.insert(info);
+                    entry.insert(Addresses::new(info));
                 }
                 Occupied(mut entry) => {
-                    if entry.get().is_newer(&info) {
-                        println!(
-                            "cargo:warning= duplicate entry for {}: '{}' ignored",
-                            utf_file_name,
-                            Path::new(&info.file_name).display(),
-                        );
+                    let entry = entry.get_mut();
+                    let old = if entry.most_recent.is_newer(&info) {
+                        info
                     } else {
-                        println!(
-                            "cargo:warning= duplicate entry for {}: '{}' replaced with '{}'",
-                            utf_file_name,
-                            Path::new(&entry.get().file_name).display(),
-                            Path::new(&info.file_name).display(),
-                        );
-                        entry.insert(info);
-                    }
+                        replace(&mut entry.most_recent, info)
+                    };
+                    entry.previous.push(old.file_name);
                 }
             }
         }
@@ -161,12 +168,21 @@ impl Recipients {
 
     pub(super) fn get(&self, name: &str) -> Option<PathBuf> {
         let name = name.replace('-', "_");
-        self.addresses.get(&name).map(|library| {
-            let file_name = Path::new(&library.file_name);
+        self.addresses.get(&name).map(|address| {
+            if !address.previous.is_empty() {
+                println!(
+                    "cargo:warning=duplicate entries for {}, using '{}', ignoring '{:?}'",
+                    name,
+                    Path::new(&address.most_recent.file_name).display(),
+                    &address.previous,
+                );
+            }
+
+            let file_name = Path::new(&address.most_recent.file_name);
             let dest = self.deps_dir.join(file_name);
 
             // Make sure we watch the library file for changes
-            if library.watch() {
+            if address.most_recent.watch() {
                 let rel_dest = self.relative_deps_dir.as_ref().map(
                     |dir| dir.join(file_name),
                 );

@@ -134,7 +134,7 @@ struct TomlPackageMetadata {
 #[derive(Deserialize, Debug)]
 struct TomlDhl {
     substitutions: Option<HashMap<String, TomlDhlSubstitution>>,
-    packages: HashMap<String, TomlDhlPackage>,
+    packages: HashMap<String, String>,
 }
 
 #[cfg(feature = "handlebars")]
@@ -152,25 +152,7 @@ enum TomlDhlSubstitution {
 #[cfg(not(feature = "handlebars"))]
 #[derive(Deserialize, Debug)]
 struct TomlDhl {
-    packages: HashMap<String, TomlDhlPackage>,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-enum TomlDhlPackage {
-    String(String),
-    Table {
-        source: String,
-        link: Option<LinkOption>,
-    },
-}
-
-#[derive(Deserialize, Debug, Clone, Copy)]
-pub enum LinkOption {
-    #[serde(rename = "hard")]
-    Hard,
-    #[serde(rename = "soft")]
-    Soft,
+    packages: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone)]
@@ -185,15 +167,6 @@ pub struct Manifest {
 pub struct UninspectedPackage {
     pub version: Option<String>,
     pub source: String,
-    pub options: UninspectedPackageOptions,
-}
-
-#[derive(Debug, Clone)]
-pub enum UninspectedPackageOptions {
-    File { link: Option<LinkOption> },
-    #[cfg(feature = "reqwest")]
-    Url,
-    Unknown,
 }
 
 #[cfg(feature = "handlebars")]
@@ -225,7 +198,6 @@ pub enum PackageData {
 #[derive(Debug, Clone)]
 pub struct FileData {
     pub source: PathBuf,
-    pub link: Option<LinkOption>,
 }
 
 #[cfg(feature = "reqwest")]
@@ -237,25 +209,37 @@ pub struct UrlData {
 impl Manifest {
     // produce
     pub fn produce() -> Result<Self, ManifestCreationError> {
-        let manifest_dir = PathBuf::from(var_os_or("CARGO_MANIFEST_DIR", ManifestCreationError::EnvError)?);
+        let manifest_dir = PathBuf::from(var_os_or(
+            "CARGO_MANIFEST_DIR",
+            ManifestCreationError::EnvError,
+        )?);
         let manifest_file = manifest_dir.join(Path::new("Cargo.toml"));
         Self::produce_from_file(manifest_dir, manifest_file)
 
     }
 
-    fn produce_from_file(manifest_dir: PathBuf, manifest_file: PathBuf) -> Result<Self, ManifestCreationError> {
+    fn produce_from_file(
+        manifest_dir: PathBuf,
+        manifest_file: PathBuf,
+    ) -> Result<Self, ManifestCreationError> {
         let mut manifest_file = BufReader::new(File::open(manifest_file)?);
         let mut contents = String::new();
         manifest_file.read_to_string(&mut contents)?;
         Self::produce_from_string(manifest_dir, contents)
     }
 
-    fn produce_from_string(manifest_dir: PathBuf, contents: String) -> Result<Self, ManifestCreationError> {
+    fn produce_from_string(
+        manifest_dir: PathBuf,
+        contents: String,
+    ) -> Result<Self, ManifestCreationError> {
         Self::produce_from_toml(manifest_dir, toml::from_str::<Toml>(&*contents)?)
     }
 
     #[cfg(feature = "handlebars")]
-    fn produce_from_toml(manifest_dir: PathBuf, contents: Toml) -> Result<Self, ManifestCreationError> {
+    fn produce_from_toml(
+        manifest_dir: PathBuf,
+        contents: Toml,
+    ) -> Result<Self, ManifestCreationError> {
         let Toml {
             package: TomlPackage {
                 metadata: TomlPackageMetadata {
@@ -313,7 +297,10 @@ impl Manifest {
     }
 
     #[cfg(not(feature = "handlebars"))]
-    fn produce_from_toml(manifest_dir: PathBuf, contents: Toml) -> Result<Self, ManifestCreationError> {
+    fn produce_from_toml(
+        manifest_dir: PathBuf,
+        contents: Toml,
+    ) -> Result<Self, ManifestCreationError> {
         let Toml{
             package: TomlPackagePackage{
                 metadata: TomlPackageMetadata{
@@ -332,12 +319,12 @@ impl Manifest {
     }
 
     fn load_packages(
-        packages: HashMap<String, TomlDhlPackage>,
+        packages: HashMap<String, String>,
         mut dependencies: HashMap<String, TomlDependency>,
     ) -> HashMap<String, UninspectedPackage> {
         packages
             .into_iter()
-            .map(|(k, v)| {
+            .map(|(k, source)| {
                 let version =
                     if let Some(TomlDependency::Table { version, .. }) = dependencies.remove(&k) {
                         version
@@ -345,21 +332,7 @@ impl Manifest {
                         None
                     };
 
-                let v = match v {
-                    TomlDhlPackage::String(source) => UninspectedPackage {
-                        version,
-                        source,
-                        options: UninspectedPackageOptions::Unknown,
-                    },
-                    TomlDhlPackage::Table { source, link } => UninspectedPackage {
-                        version,
-                        source,
-                        options: match link {
-                            link @ Some(_) => UninspectedPackageOptions::File { link },
-                            _ => UninspectedPackageOptions::Unknown,
-                        },
-                    },
-                };
+                let v = UninspectedPackage { version, source };
                 (k, v)
             })
             .collect()
@@ -427,35 +400,16 @@ impl Manifest {
         source: &str,
     ) -> Result<PackageData, ManifestInspectionError> {
         // Start at the manifest dir and join. Absolute paths will just replace it.
-        Ok(match &package.options {
-            &UninspectedPackageOptions::File { link } => PackageData::File(FileData {
-                source: manifest_dir.join(if source.starts_with("file://") {
-                    Path::new(source.split_at("file://".len()).1)
-                } else {
-                    Path::new(source)
-                }),
-                link,
-            }),
-            &UninspectedPackageOptions::Url => PackageData::Url(UrlData {
+        Ok(if source.starts_with("file://") {
+            PackageData::File(FileData {
+                source: manifest_dir.join(Path::new(source.split_at("file://".len()).1)),
+            })
+        } else if source.contains("://") {
+            PackageData::Url(UrlData {
                 source: Url::parse(source).context((crate_name, package))?,
-            }),
-            &UninspectedPackageOptions::Unknown => {
-                if source.starts_with("file://") {
-                    PackageData::File(FileData {
-                        source: manifest_dir.join(Path::new(source.split_at("file://".len()).1)),
-                        link: None,
-                    })
-                } else if source.contains("://") {
-                    PackageData::Url(UrlData {
-                        source: Url::parse(source).context((crate_name, package))?,
-                    })
-                } else {
-                    PackageData::File(FileData {
-                        source: manifest_dir.join(Path::new(source)),
-                        link: None,
-                    })
-                }
-            }
+            })
+        } else {
+            PackageData::File(FileData { source: manifest_dir.join(Path::new(source)) })
         })
     }
 
@@ -467,24 +421,13 @@ impl Manifest {
         source: &str,
     ) -> Result<PackageData, ManifestInspectionError> {
         // Start at the manifest dir and join. Absolute paths will just replace it.
-        Ok(match &package.options {
-            &UninspectedPackageOptions::File { link } => PackageData::File(FileData {
-                source: manifest_dir.join(if source.starts_with("file://") {
-                    Path::new(source.split_at("file://".len()).1)
-                } else {
-                    Path::new(source)
-                }),
-                link,
-            }),
-            &UninspectedPackageOptions::Unknown => PackageData::File(FileData {
-                link: None,
-                source: manifest_dir.join(Path::new(if source.starts_with("file://") {
-                    source.split_at("file://".len()).1
-                } else {
-                    source
-                })),
-            }),
-        })
+        Ok(PackageData::File(FileData {
+            source: manifest_dir.join(Path::new(if source.starts_with("file://") {
+                source.split_at("file://".len()).1
+            } else {
+                source
+            })),
+        }))
     }
 }
 
@@ -513,7 +456,9 @@ priv = { path = "priv" }
 priv = { path = "priv" }
 
 [package.metadata.dhl.packages]
-priv = { source = "file://lib/libpriv.lib", link = "hard"  }
+priv = "file://lib/libpriv.tar.gz"
+priv2 = "./lib/libpriv2.tar.gz"
+priv3 = "http://example.com/libpriv.tar.gz"
 "#;
 
     #[test]
